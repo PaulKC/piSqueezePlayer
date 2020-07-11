@@ -18,4 +18,31 @@ Small 3D printed squeezebox player based on a Raspberry Pi
 * In the piCorePlayer webgui select "Advanced" on the bottom of the main page.
 * Install the extension pcp-sbpd.tcz
 * In the Squeezelight Tab, select HiFiBerry DAC Zero/MiniAMP as audio output device
-* Under Tweaks add the command "sbpd e,22,27,VOLU b,26,PLAY" to user commands. (Pin numbers depend on setup)
+* Create a executable file `/home/tc/sbpd-script.sh` with the content:
+```#!/bin/sh
+
+# start pigpiod daemon
+pigpiod -t 0 -f -l -s 10
+
+# wait for pigpiod to initialize - indicated by 'pigs t' exit code of zero
+count=10 # approx time limit in seconds
+while ! pigs t >/dev/null 2>&1 ; do
+        if [ $((count--)) -le 0 ]; then
+                printf "\npigpiod failed to initialize within time limit\n"
+                exit 1 # or however you want to deal with failure
+        fi
+#       printf "\nWaiting for pigpiod to initialize\n"
+        sleep 1
+done
+printf "\npigpiod is running\n"
+
+# load uinput module - required to be able to send keystrokes
+# then set the permission to group writable, so you don't need to run sbpd with
+sudo modprobe uinput
+sudo chmod g+w /dev/uinput
+
+# issue the sbpd command
+sbpd e,22,27,VOLU b,26,PLAY -d
+```
+* Backup the configuration in the Main Page
+* Under Tweaks add the command `/home/tc/sbpd-script.sh` to user commands. (Pin numbers depend on setup)
